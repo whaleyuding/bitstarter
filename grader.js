@@ -27,6 +27,10 @@ var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
 
+var HTMLFILE_HTTP_DEFAULT = "https://spark-public.s3.amazonaws.com/startup/code/bitstarter.html";
+var sys = require('util');
+var rest = require('restler');
+
 var assertFileExists = function(infile) {
     var instr = infile.toString();
     if(!fs.existsSync(instr)) {
@@ -36,6 +40,17 @@ var assertFileExists = function(infile) {
     return instr;
 };
 
+var assertHtmlExists = function(inhtml){
+    return rest.get(inhtml).on('complete', function(result){
+        if (result instanceof Error){
+            sys.puts('Error: ' + result.message);
+            this.retry(2000);
+        } else {
+           return result;
+        }
+    })
+};
+    
 var cheerioHtmlFile = function(htmlfile) {
     return cheerio.load(fs.readFileSync(htmlfile));
 };
@@ -65,8 +80,10 @@ if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-h, --url <http_file>', 'Path to http html file', clone(assertHtmlExists),HTMLFILE_HTTP_DEFAULT )
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
+    if (program.file)  var checkJson = checkHtmlFile(program.file, program.checks);
+    if (program.url) var checkJson = checkHtmlFile(program.url, program.checks);
     var outJson = JSON.stringify(checkJson, null, 4);
     console.log(outJson);
 } else {
